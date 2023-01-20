@@ -5,6 +5,7 @@ import { MongoClient } from "mongodb";
 import chalk from "chalk";
 import joi from "joi";
 import bcrypt from "bcrypt";
+import { v4 as uuidV4 } from "uuid";
 
 const PORT = 5000;
 const app = express();
@@ -18,8 +19,8 @@ const db = mongoClient.db();
 try {
   await mongoClient.connect();
   console.log("Connected Successfully");
-} catch (err) {
-  console.log(`Something went wrong ${err.message}`);
+} catch (error) {
+  console.log(`Something went wrong ${error.message}`);
 }
 
 app.post("/sign-up", async (req, res) => {
@@ -36,7 +37,7 @@ app.post("/sign-up", async (req, res) => {
     { abortEarly: false }
   );
   if (signUpValidation.error) {
-    const errors = signUpValidation.details.map((r) => r.message);
+    const errors = signUpValidation.details.map((s) => s.message);
     return res.status(422).send(errors);
   }
 
@@ -53,7 +54,37 @@ app.post("/sign-up", async (req, res) => {
       confirmPassword: encryptedPassword,
     });
     res.status(201).send("Usuário registrado com sucesso!");
-  } catch (error) {}
+  } catch (error) {
+    return res.status(500).send(error);
+  }
+});
+
+app.post("/sign-in", async (req, res) => {
+  const { email, password } = req.body;
+  const signInSchema = joi.object({
+    email: joi.string().required(),
+    password: joi.string().required(),
+  });
+  const signInValidation = signInSchema.validate(
+    { email, password },
+    { abortEarly: false }
+  );
+
+  if (signInValidation.error) {
+    const errors = signInValidation.details.map((s) => s.message);
+    return res.status(422).send(errors);
+  }
+  try {
+    const user = await db.collection("users").findOne({ email });
+    if (!user || !bcrypt.compareSync(password, user.password)) {
+      return res.status(400).send("Email ou senha inválidos");
+    }
+    const token = uuidV4();
+    await db.collection("sessions").insertOne({ userId: user._id, token });
+    return res.status(200).send(token);
+  } catch (error) {
+    return res.status(500).send(error);
+  }
 });
 
 app.listen(PORT, () =>
