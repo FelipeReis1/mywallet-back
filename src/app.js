@@ -30,14 +30,15 @@ app.post("/sign-up", async (req, res) => {
     name: joi.string().required(),
     email: joi.string().required(),
     password: joi.string().required(),
-    confirmPassword: joi.string().required(),
+    confirmPassword: joi.string().valid(joi.ref("password")).required(),
   });
-  const signUpValidation = signUpSchema.validate(
+  const { error } = signUpSchema.validate(
     { name, email, password, confirmPassword },
     { abortEarly: false }
   );
-  if (signUpValidation.error) {
-    const errors = signUpValidation.details.map((s) => s.message);
+
+  if (error) {
+    const errors = error.details.map((s) => s.message);
     return res.status(422).send(errors);
   }
 
@@ -65,13 +66,13 @@ app.post("/sign-in", async (req, res) => {
     email: joi.string().required(),
     password: joi.string().required(),
   });
-  const signInValidation = signInSchema.validate(
+  const { error } = signInSchema.validate(
     { email, password },
     { abortEarly: false }
   );
 
-  if (signInValidation.error) {
-    const errors = signInValidation.details.map((s) => s.message);
+  if (error) {
+    const errors = error.details.map((s) => s.message);
     return res.status(422).send(errors);
   }
   try {
