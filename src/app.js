@@ -6,6 +6,7 @@ import chalk from "chalk";
 import joi from "joi";
 import bcrypt from "bcrypt";
 import { v4 as uuidV4 } from "uuid";
+import dayjs from "dayjs";
 
 const PORT = 5000;
 const app = express();
@@ -38,7 +39,7 @@ app.post("/sign-up", async (req, res) => {
   );
 
   if (error) {
-    const errors = error.details.map((s) => s.message);
+    const errors = error.details.map((e) => e.message);
     return res.status(422).send(errors);
   }
 
@@ -72,7 +73,7 @@ app.post("/sign-in", async (req, res) => {
   );
 
   if (error) {
-    const errors = error.details.map((s) => s.message);
+    const errors = error.details.map((e) => e.message);
     return res.status(422).send(errors);
   }
   try {
@@ -83,6 +84,48 @@ app.post("/sign-in", async (req, res) => {
     const token = uuidV4();
     await db.collection("sessions").insertOne({ userId: user._id, token });
     return res.status(200).send(token);
+  } catch (error) {
+    return res.status(500).send(error);
+  }
+});
+
+app.post("/revenues", async (req, res) => {
+  const { value, description, type } = req.body;
+  const { authorization } = req.headers;
+  const token = authorization?.replace("Bearer ", "");
+  const revenueSchema = joi.object({
+    value: joi.number().required(),
+    description: joi.string().required(),
+    type: joi.string().required(),
+  });
+  const { error } = revenueSchema.validate(
+    { value, description, type },
+    { abortEarly: false }
+  );
+  if (!token) {
+    return res
+      .status(401)
+      .send("Você não tem autorização, informe o token para continuar!");
+  }
+  if (error) {
+    const errors = error.details.map((e) => e.message);
+    return res.status(422).send(errors);
+  }
+  try {
+    const userSession = await db.collection("sessions").findOne({ token });
+    if (!userSession) {
+      return res
+        .status(401)
+        .send("Você não tem autorização para inserir um novo registro!");
+    }
+    await db.collection("revenues").insertOne({
+      userId: userSession._id,
+      date: dayjs().format("DD/MM"),
+      value,
+      description,
+      type,
+    });
+    return res.status(201).send("Novo registro inserido com sucesso!");
   } catch (error) {
     return res.status(500).send(error);
   }
