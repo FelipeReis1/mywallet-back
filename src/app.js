@@ -131,6 +131,31 @@ app.post("/revenues", async (req, res) => {
   }
 });
 
+app.get("/home", async (req, res) => {
+  const { authorization } = req.headers;
+  const token = authorization?.replace("Bearer ", "");
+  if (!token) {
+    return res
+      .status(401)
+      .send("Você não tem autorização, informe o token para continuar!");
+  }
+  try {
+    const userSession = await db.collection("sessions").findOne({ token });
+    if (!userSession) {
+      return res
+        .status(401)
+        .send("Você não tem autorização para verificar registros!");
+    }
+    const revenues = await db
+      .collection("revenues")
+      .find({ userId: userSession._id })
+      .toArray();
+    return res.send(revenues);
+  } catch (error) {
+    return res.status(500).send(error);
+  }
+});
+
 app.listen(PORT, () =>
   console.log(chalk.bold.blue(`Server running on port: ${PORT}`))
 );
