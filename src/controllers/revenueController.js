@@ -5,6 +5,7 @@ export async function createRevenue(req, res) {
   const { value, description, type } = req.body;
   const { authorization } = req.headers;
   const token = authorization?.replace("Bearer ", "");
+  let fixedValue = Number(value).toFixed(2);
   try {
     const userSession = await db.collection("sessions").findOne({ token });
     if (!userSession) {
@@ -13,9 +14,9 @@ export async function createRevenue(req, res) {
         .send("Você não tem autorização para inserir um novo registro!");
     }
     await db.collection("revenues").insertOne({
-      userId: userSession._id,
+      userId: userSession.userId,
       date: dayjs().format("DD/MM"),
-      value,
+      value: fixedValue,
       description,
       type,
     });
@@ -36,7 +37,7 @@ export async function getRevenue(_, res) {
     }
     const revenues = await db
       .collection("revenues")
-      .find({ userId: userSession._id })
+      .find({ userId: userSession.userId })
       .toArray();
     return res.send(revenues);
   } catch (error) {
