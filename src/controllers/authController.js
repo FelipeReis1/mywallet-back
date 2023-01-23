@@ -33,7 +33,7 @@ export async function loginUser(req, res) {
     }
     const token = uuidV4();
     await db.collection("sessions").insertOne({ userId: user._id, token });
-    return res.status(200).send({ token });
+    return res.status(200).send({ name: user.name, token, userId: user._id });
   } catch (error) {
     return res.status(500).send(error.message);
   }
